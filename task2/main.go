@@ -1,5 +1,5 @@
 // task2 project main.go
-// HTTP REST server for handle storing of simple key-value records
+// HTTP REST server for storing simple key-value records
 
 package main
 
