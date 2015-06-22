@@ -1,7 +1,6 @@
-// task2 project handler.go
 // Handler provides record operating methods for HTTP REST server
 
-package controllers
+package storage
 
 import (
 	"encoding/json"
@@ -12,10 +11,10 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"golang-study/task2/models"
+	"golang-study/io"
 )
 
-var log = GetLogger()
+var log = io.GetLogger()
 
 func handleResponce(w http.ResponseWriter, level func(format string, args ...interface{}), code int, message string) {
 	w.WriteHeader(code)
@@ -26,10 +25,10 @@ type Handler struct{}
 
 func NewHandler() (h *Handler, err error) {
 	h = &Handler{}
-	err = loadFromFile(models.RecordsFilePath, &models.RecordsMap)
+	err = io.LoadFromFile(RecordsFilePath, &Records)
 	if os.IsNotExist(err) {
 		err = nil
-		models.RecordsMap = make(models.RecordsMapType)
+		Records = make(RecordsType)
 	}
 	return
 }
@@ -37,7 +36,7 @@ func NewHandler() (h *Handler, err error) {
 func (h *Handler) ShowStatus(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	response := models.StatusResponse{Message: "Ok", Timestamp: time.Now().Unix()}
+	response := StatusResponse{Message: "Ok", Timestamp: time.Now().Unix()}
 
 	if json.NewEncoder(w).Encode(response) != nil {
 		handleResponce(w, log.Error, 500, "Encoding response error")
@@ -48,11 +47,11 @@ func (h *Handler) ShowStatus(w http.ResponseWriter, _ *http.Request, _ httproute
 
 func (h *Handler) GetRecord(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
-	record := models.Record{Key: models.RecordKeyType(p.ByName("key"))}
+	record := Record{Key: RecordKeyType(p.ByName("key"))}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	if v, ok := models.RecordsMap[record.Key]; ok {
+	if v, err := Records.GetLast(record.Key); err == nil {
 		record.Value = v
 	} else {
 		handleResponce(w, log.Info, 404, "No record found for key '"+string(record.Key)+"'")
@@ -66,20 +65,38 @@ func (h *Handler) GetRecord(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 }
 
-func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func (h *Handler) GetRecordHistory(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
-	key := models.RecordKeyType(p.ByName("key"))
+	recordHistory := RecordHistory{Key: RecordKeyType(p.ByName("key"))}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	if _, ok := models.RecordsMap[key]; !ok {
+	if v, err := Records.GetAll(recordHistory.Key); err == nil {
+		recordHistory.Values = v
+	} else {
+		handleResponce(w, log.Info, 404, "No record found for key '"+string(recordHistory.Key)+"'")
+		return
+	}
+
+	handleResponce(w, log.Info, 200, fmt.Sprintf("%+v", recordHistory))
+
+	if json.NewEncoder(w).Encode(recordHistory) != nil {
+		handleResponce(w, log.Error, 500, "Encoding response error")
+	}
+}
+
+func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+
+	key := RecordKeyType(p.ByName("key"))
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	if Records.Delete(key) != nil {
 		handleResponce(w, log.Info, 404, "No record found for key '"+string(key)+"'")
 		return
 	}
 
-	delete(models.RecordsMap, key)
-
-	if err := saveToFile(models.RecordsFilePath, &models.RecordsMap); err != nil {
+	if err := io.SaveToFile(RecordsFilePath, &Records); err != nil {
 		handleResponce(w, log.Fatalf, 500, "Saving records to file failed")
 	}
 
@@ -88,7 +105,7 @@ func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request, p httprou
 
 func (h *Handler) SetRecord(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
-	record := models.Record{Key: models.RecordKeyType(p.ByName("key"))}
+	record := Record{Key: RecordKeyType(p.ByName("key"))}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewDecoder(r.Body).Decode(&record)
@@ -98,9 +115,9 @@ func (h *Handler) SetRecord(w http.ResponseWriter, r *http.Request, p httprouter
 		return
 	}
 
-	models.RecordsMap[record.Key] = record.Value
+	Records.Add(record.Key, record.Value)
 
-	if err := saveToFile(models.RecordsFilePath, &models.RecordsMap); err != nil {
+	if err := io.SaveToFile(RecordsFilePath, &Records); err != nil {
 		handleResponce(w, log.Fatalf, 500, "Saving records to file failed")
 	}
 

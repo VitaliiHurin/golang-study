@@ -1,4 +1,3 @@
-// task2 project main.go
 // HTTP REST server for storing simple key-value records
 
 package main
@@ -8,17 +7,18 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"golang-study/task2/controllers"
+	"golang-study/io"
+	"golang-study/storage"
 )
 
-var log = controllers.GetLogger()
+var log = io.GetLogger()
 
 func main() {
 
 	log.Info("Server is starting...")
 
 	router := httprouter.New()
-	handler, err := controllers.NewHandler()
+	handler, err := storage.NewHandler()
 	if err != nil {
 		log.Critical(err.Error())
 		return
@@ -26,6 +26,7 @@ func main() {
 
 	router.GET("/status", handler.ShowStatus)
 	router.GET("/keys/:key", handler.GetRecord)
+	router.GET("/keys/:key/all", handler.GetRecordHistory)
 	router.POST("/keys/:key", handler.SetRecord)
 	router.DELETE("/keys/:key", handler.DeleteRecord)
 

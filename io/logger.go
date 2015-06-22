@@ -1,7 +1,6 @@
-// task2 project logger.go
 // Logger is a singleton wrapper of Logger from go-logging/logging package
 
-package controllers
+package io
 
 import (
 	"os"

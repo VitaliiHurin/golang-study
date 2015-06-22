@@ -1,7 +1,6 @@
-// task2 project status_response.go
 // Provides status response struct
 
-package models
+package storage
 
 type StatusResponse struct {
 	Message   string `json:"message"`
