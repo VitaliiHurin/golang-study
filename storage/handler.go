@@ -16,7 +16,7 @@ import (
 
 var log = io.GetLogger()
 
-func handleResponce(w http.ResponseWriter, level func(format string, args ...interface{}), code int, message string) {
+func handleResponse(w http.ResponseWriter, level func(format string, args ...interface{}), code int, message string) {
 	w.WriteHeader(code)
 	level("Code: %d. Message: %s", code, message)
 }
@@ -39,9 +39,9 @@ func (h *Handler) ShowStatus(w http.ResponseWriter, _ *http.Request, _ httproute
 	response := StatusResponse{Message: "Ok", Timestamp: time.Now().Unix()}
 
 	if json.NewEncoder(w).Encode(response) != nil {
-		handleResponce(w, log.Error, 500, "Encoding response error")
+		handleResponse(w, log.Error, 500, "Encoding response error")
 	} else {
-		handleResponce(w, log.Info, 200, "Ok")
+		handleResponse(w, log.Info, 200, "Ok")
 	}
 }
 
@@ -54,14 +54,14 @@ func (h *Handler) GetRecord(w http.ResponseWriter, r *http.Request, p httprouter
 	if v, err := Records.GetLast(record.Key); err == nil {
 		record.Value = v
 	} else {
-		handleResponce(w, log.Info, 404, "No record found for key '"+string(record.Key)+"'")
+		handleResponse(w, log.Info, 404, "No record found for key '"+string(record.Key)+"'")
 		return
 	}
 
-	handleResponce(w, log.Info, 200, fmt.Sprintf("%+v", record))
+	handleResponse(w, log.Info, 200, fmt.Sprintf("%+v", record))
 
 	if json.NewEncoder(w).Encode(record) != nil {
-		handleResponce(w, log.Error, 500, "Encoding response error")
+		handleResponse(w, log.Error, 500, "Encoding response error")
 	}
 }
 
@@ -74,14 +74,14 @@ func (h *Handler) GetRecordHistory(w http.ResponseWriter, r *http.Request, p htt
 	if v, err := Records.GetAll(recordHistory.Key); err == nil {
 		recordHistory.Values = v
 	} else {
-		handleResponce(w, log.Info, 404, "No record found for key '"+string(recordHistory.Key)+"'")
+		handleResponse(w, log.Info, 404, "No record found for key '"+string(recordHistory.Key)+"'")
 		return
 	}
 
-	handleResponce(w, log.Info, 200, fmt.Sprintf("%+v", recordHistory))
+	handleResponse(w, log.Info, 200, fmt.Sprintf("%+v", recordHistory))
 
 	if json.NewEncoder(w).Encode(recordHistory) != nil {
-		handleResponce(w, log.Error, 500, "Encoding response error")
+		handleResponse(w, log.Error, 500, "Encoding response error")
 	}
 }
 
@@ -92,15 +92,15 @@ func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request, p httprou
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	if Records.Delete(key) != nil {
-		handleResponce(w, log.Info, 404, "No record found for key '"+string(key)+"'")
+		handleResponse(w, log.Info, 404, "No record found for key '"+string(key)+"'")
 		return
 	}
 
 	if err := io.SaveToFile(RecordsFilePath, &Records); err != nil {
-		handleResponce(w, log.Fatalf, 500, "Saving records to file failed")
+		handleResponse(w, log.Fatalf, 500, "Saving records to file failed")
 	}
 
-	handleResponce(w, log.Info, 200, "Record with key '"+string(key)+"' was successfully deleted")
+	handleResponse(w, log.Info, 200, "Record with key '"+string(key)+"' was successfully deleted")
 }
 
 func (h *Handler) SetRecord(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -111,19 +111,19 @@ func (h *Handler) SetRecord(w http.ResponseWriter, r *http.Request, p httprouter
 	json.NewDecoder(r.Body).Decode(&record)
 
 	if record.Value == "" {
-		handleResponce(w, log.Info, 400, "No value for key '"+string(record.Key)+"' received")
+		handleResponse(w, log.Info, 400, "No value for key '"+string(record.Key)+"' received")
 		return
 	}
 
 	Records.Add(record.Key, record.Value)
 
 	if err := io.SaveToFile(RecordsFilePath, &Records); err != nil {
-		handleResponce(w, log.Fatalf, 500, "Saving records to file failed")
+		handleResponse(w, log.Fatalf, 500, "Saving records to file failed")
 	}
 
-	handleResponce(w, log.Info, 201, "Record "+fmt.Sprintf("%+v", record)+" was successfully created")
+	handleResponse(w, log.Info, 201, "Record "+fmt.Sprintf("%+v", record)+" was successfully created")
 
 	if json.NewEncoder(w).Encode(record) != nil {
-		handleResponce(w, log.Error, 500, "Encoding response error")
+		handleResponse(w, log.Error, 500, "Encoding response error")
 	}
 }
